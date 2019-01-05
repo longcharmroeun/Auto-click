@@ -4,6 +4,7 @@ using System.ComponentModel;
 using System.Data;
 using System.Drawing;
 using System.Linq;
+using System.Media;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
@@ -16,13 +17,21 @@ namespace Auto_click
     {
         public UserActivityHook User = new UserActivityHook();
 
+        public About about;
+
         public int Seconds = 0;
         public int Count = 0;
 
         List<MouseRecord> MouseRecords = new List<MouseRecord>();
 
         [DllImport("user32.dll")]
-        static extern bool SetCursorPos( int X, int Y);
+        public static extern bool SetCursorPos( int X, int Y);
+
+        [DllImport("user32.dll")]
+        public static extern short VkKeyScanA(char ch);
+
+        [DllImport("user32.dll", SetLastError = true)]
+        static extern void keybd_event(byte bVk, byte bScan, uint dwFlags, UIntPtr dwExtraInfo);
 
         [DllImport("user32.dll", CharSet = CharSet.Auto, CallingConvention = CallingConvention.StdCall)]
         public static extern void mouse_event(uint dwFlags, uint dx, uint dy, uint cButtons, UIntPtr dwExtraInfo);
@@ -43,18 +52,15 @@ namespace Auto_click
 
         private void Form1_Load(object sender, EventArgs e)
         {
-            
+            about = new About();
+            this.Text = "Auto Click";
         }
-
+        
         private void User_OnMouseActivity(object sender, MouseEventArgs e)
         {
             if(e.Button == MouseButtons.Left || e.Button == MouseButtons.Right)
             {
-                MouseRecords.Add(new MouseRecord { MouseButtons = e.Button, Point = e.Location,Seconds = this.Seconds });
-                if (!timer1.Enabled)
-                {
-                    timer1.Start();
-                }
+                MouseRecords.Add(new MouseRecord { MouseButtons = e.Button, Point = e.Location,Seconds = this.Seconds});
             }
         }
 
@@ -64,12 +70,16 @@ namespace Auto_click
             {
                 label2.Text = $"Info:{Environment.NewLine} No Record Data";
             }
+            else if(textBox1.Text == string.Empty)
+            {
+                MessageBox.Show("Must Input Number Click!", "Warning", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            }
             else
             {
-                button2.Text = "'Space'";
+                button1.Text = "Stop";
+                button2.Enabled = false;
+                button3.Enabled = false;
                 User.KeyDown += User_KeyDown1;
-                button1.Enabled = false;
-                button2.Enabled = true;
                 progressBar2.Maximum = Convert.ToInt32(textBox1.Text);
                 progressBar1.Maximum = MouseRecords.ElementAt(MouseRecords.Count - 1).Seconds;
                 checkBox1.Enabled = false;
@@ -77,6 +87,7 @@ namespace Auto_click
                 {
                     this.Hide();
                 }
+                timer2.Interval = MouseRecords.ElementAt(0).Seconds;
                 timer2.Start();
             }
         }
@@ -85,30 +96,36 @@ namespace Auto_click
         {
             if(e.KeyCode == Keys.Space)
             {
-                button2.PerformClick();
+                timer2.Stop();
+                button1.Text = "Start";
             }
         }
 
         private void button2_Click(object sender, EventArgs e)
         {
-            if (MouseRecords.Count > 0)
-            {
-                timer2.Stop();
-                button1.Enabled = true;
-                button2.Enabled = false;
-            }           
+            MouseRecords.Clear();          
         }
 
         private void button3_Click(object sender, EventArgs e)
         {
             User.OnMouseActivity += User_OnMouseActivity;
             User.KeyDown += User_KeyDown;
+            timer1.Start();
             this.Hide();
         }
 
         private void User_KeyDown(object sender, KeyEventArgs e)
         {
-            if(e.KeyCode == Keys.Enter)
+            if (e.KeyCode == Keys.Delete)
+            {
+                for (int i = 0; i < Keyboard.Text.Length; i++)
+                {
+                    keybd_event((byte)VkKeyScanA(Keyboard.Text.ElementAt<char>(i)), 0, 0x0001, (UIntPtr)0);
+                }
+                MouseRecords.Add(new MouseRecord { MouseButtons = MouseButtons.None, Point = Point.Empty, Seconds = this.Seconds });
+            }
+
+            if (e.KeyCode == Keys.Enter)
             {
                 User.OnMouseActivity -= User_OnMouseActivity;
                 User.KeyDown -= User_KeyDown;
@@ -117,6 +134,7 @@ namespace Auto_click
                 MessageBox.Show("Record Complete");
                 this.Show();
             }
+            
         }
 
         private void timer1_Tick(object sender, EventArgs e)
@@ -126,22 +144,26 @@ namespace Auto_click
 
         private void timer2_Tick(object sender, EventArgs e)
         {
-            if (Count == MouseRecords.Count)
+            try
             {
-                timer2.Stop();
-                timer2.Interval = 10;
-                Count = 0;
-            }
-            else
-            {
-                SetCursorPos(MouseRecords.ElementAt(Count).Point.X, MouseRecords.ElementAt(Count).Point.Y);
-                if (MouseRecords.ElementAt(Count).MouseButtons == MouseButtons.Right)
+                if (MouseRecords.ElementAt(Count).MouseButtons == MouseButtons.None)
                 {
-                    mouse_event((uint)(Mouse.MOUSEEVENTF_RIGHTDOWN | Mouse.MOUSEEVENTF_RIGHTUP), 0, 0, 0, (System.UIntPtr)0);
+                    for (int i = 0; i < Keyboard.Text.Length; i++)
+                    {
+                        keybd_event((byte)VkKeyScanA(Keyboard.Text.ElementAt<char>(i)), 0, 0x0001, (UIntPtr)0);
+                    }
                 }
-                else if (MouseRecords.ElementAt(Count).MouseButtons == MouseButtons.Left)
+                else
                 {
-                    mouse_event((uint)(Mouse.MOUSEEVENTF_LEFTUP | Mouse.MOUSEEVENTF_LEFTDOWN), 0, 0, 0, (System.UIntPtr)0);
+                    SetCursorPos(MouseRecords.ElementAt(Count).Point.X, MouseRecords.ElementAt(Count).Point.Y);
+                    if (MouseRecords.ElementAt(Count).MouseButtons == MouseButtons.Right)
+                    {
+                        mouse_event((uint)(Mouse.MOUSEEVENTF_RIGHTDOWN | Mouse.MOUSEEVENTF_RIGHTUP), 0, 0, 0, (System.UIntPtr)0);
+                    }
+                    else if (MouseRecords.ElementAt(Count).MouseButtons == MouseButtons.Left)
+                    {
+                        mouse_event((uint)(Mouse.MOUSEEVENTF_LEFTUP | Mouse.MOUSEEVENTF_LEFTDOWN), 0, 0, 0, (System.UIntPtr)0);
+                    }
                 }
                 Count++;
                 if (Count == MouseRecords.Count)
@@ -158,8 +180,9 @@ namespace Auto_click
                     else
                     {
                         checkBox1.Enabled = true;
-                        button1.Enabled = true;
-                        button2.Text = "Stop";
+                        button1.Text = "Start";
+                        button2.Enabled = true;
+                        button3.Enabled = true;
                         if (checkBox1.Checked)
                         {
                             this.ShowDialog();
@@ -171,6 +194,11 @@ namespace Auto_click
                     timer2.Interval = MouseRecords.ElementAt(Count).Seconds - MouseRecords.ElementAt(Count - 1).Seconds;
                     progressBar1.Value = MouseRecords.ElementAt(Count).Seconds;
                 }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(ex.Message);
+                Application.Exit();
             }
         }
 
@@ -187,8 +215,38 @@ namespace Auto_click
 
         private void linkLabel2_LinkClicked(object sender, LinkLabelLinkClickedEventArgs e)
         {
-            MessageBox.Show("Coming Soon");
+            if (Application.OpenForms[about.Name] == null)
+            {
+                about.Show();
+            }
+            else
+            {
+                SystemSounds.Beep.Play();
+                Application.OpenForms[about.Name].Focus();
+            }
         }
-        
+
+        private void button5_Click(object sender, EventArgs e)
+        {
+            for (int i = 0; i < Keyboard.Text.Length; i++)
+            {
+                keybd_event((byte)VkKeyScanA(Keyboard.Text.ElementAt<char>(i)), 0, 0x0001, (UIntPtr)0);
+            }
+        }
+
+        private void textBox1_KeyPress(object sender, KeyPressEventArgs e)
+        {
+            if (!char.IsControl(e.KeyChar) && !char.IsDigit(e.KeyChar) &&
+        (e.KeyChar != '.'))
+            {
+                e.Handled = true;
+            }
+
+            // only allow one decimal point
+            if ((e.KeyChar == '.') && ((sender as TextBox).Text.IndexOf('.') > -1))
+            {
+                e.Handled = true;
+            }
+        }
     }
 }
