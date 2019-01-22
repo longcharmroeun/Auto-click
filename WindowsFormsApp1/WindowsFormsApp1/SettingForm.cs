@@ -31,7 +31,7 @@ namespace WindowsFormsApp1
         {
             authentication.password = textBox2.Text;
             authentication.username = textBox1.Text;
-            File.WriteAllText("../../data.json", Newtonsoft.Json.JsonConvert.SerializeObject(authentication));       
+            File.WriteAllText("../../data.json", Newtonsoft.Json.JsonConvert.SerializeObject(authentication));
             this.Close();
         }
     }

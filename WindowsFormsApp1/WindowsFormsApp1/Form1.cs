@@ -39,7 +39,7 @@ namespace WindowsFormsApp1
             catch (System.Net.WebException)
             {
                 button1.PerformClick();
-            }           
+            }
         }
 
         private void loading(object obj)
@@ -125,8 +125,8 @@ namespace WindowsFormsApp1
             if (Application.OpenForms[settingForm.Name] == null)
             {
                 settingForm.Show();
-                Application.OpenForms[settingForm.Name].Focus();
                 settingForm.Disposed += SettingForm_Disposed;
+                settingForm.button1.Click += Button1_Click;
             }
             else
             {
@@ -134,11 +134,25 @@ namespace WindowsFormsApp1
                 System.Media.SystemSounds.Beep.Play();
             }
         }
+        
+        private void Button1_Click(object sender, EventArgs e)
+        {
+            this.OnLoad(new EventArgs());
+        }
 
         private void SettingForm_Disposed(object sender, EventArgs e)
         {
+            settingForm.Disposed -= SettingForm_Disposed;
             settingForm = new SettingForm();
-            this.OnLoad(new EventArgs());
+            settingForm.button1.Click -= Button1_Click;
+        }
+
+        private void Form1_FormClosing(object sender, FormClosingEventArgs e)
+        {
+            if (Application.OpenForms[settingForm.Name] != null)
+            {
+                settingForm.Dispose();
+            }
         }
     }
 }
