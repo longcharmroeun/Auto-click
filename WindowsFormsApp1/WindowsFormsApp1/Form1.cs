@@ -33,28 +33,25 @@ namespace WindowsFormsApp1
             ranking = new Ranking();
             try
             {
-                Loading();
+                Authorization(new Uri("https://msapi.itstep.org/api/v1/auth/login"), ref Token);
+                ThreadPool.QueueUserWorkItem(loading);
             }
             catch (System.Net.WebException)
             {
                 button1.PerformClick();
-            }
+            }           
         }
 
-        private void Loading()
+        private void loading(object obj)
         {
-            Authorization(new Uri("https://msapi.itstep.org/api/v1/auth/login"), ref Token);
             GetJson<UserInfo>(Token, new Uri("https://msapi.itstep.org/api/v1/settings/user-info"), ref UserInfo);
             using (WebClient web = new WebClient())
             {
                 web.DownloadFileAsync(new Uri(UserInfo.photo), "User");
                 web.DownloadFileCompleted += Web_DownloadFileCompleted;
             }
-            InitializeLabel();
-
             GetJson<Ranking>(Token, new Uri("https://msapi.itstep.org/api/v1/dashboard/progress/leader-group-points"), ref ranking);
-            label7.Text = ranking.studentPosition.ToString();
-            label9.Text = ranking.totalCount.ToString();
+            this.Invoke(new Action(() => InitializeLabel()));
         }
 
         private void InitializeLabel()
@@ -76,6 +73,9 @@ namespace WindowsFormsApp1
             {
                 label6.Size = new Size(((label6.Text.Length) * (int)label6.Font.Size) + 18, 22);
             }
+
+            label7.Text = ranking.studentPosition.ToString();
+            label9.Text = ranking.totalCount.ToString();
         }
 
         private void Web_DownloadFileCompleted(object sender, AsyncCompletedEventArgs e)
@@ -91,7 +91,7 @@ namespace WindowsFormsApp1
 
             using (Stream stream = webRequest.GetRequestStream())
             {
-                stream.Write(Properties.Resources.data, 0, Properties.Resources.data.Length);
+                stream.Write(File.ReadAllBytes("../../data.json"),0, File.ReadAllBytes("../../data.json").Length);
             }
 
             using (WebResponse response = webRequest.GetResponse())
@@ -137,17 +137,8 @@ namespace WindowsFormsApp1
 
         private void SettingForm_Disposed(object sender, EventArgs e)
         {
-            settingForm.Disposed -= SettingForm_Disposed;
             settingForm = new SettingForm();
-            try
-            {
-                this.Refresh();
-                Loading();
-            }
-            catch (System.Net.WebException)
-            {
-                button1.PerformClick();
-            }
+            this.OnLoad(new EventArgs());
         }
     }
 }
