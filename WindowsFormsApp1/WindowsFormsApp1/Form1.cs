@@ -20,6 +20,7 @@ namespace WindowsFormsApp1
         private UserInfo UserInfo;
         private Ranking ranking;
         private SettingForm settingForm;
+        private List<Schedule> schedules;
         public Form1()
         {
             InitializeComponent();
@@ -31,6 +32,7 @@ namespace WindowsFormsApp1
             Token = new Token();
             UserInfo = new UserInfo();
             ranking = new Ranking();
+            schedules = new List<Schedule>();
             try
             {
                 Authorization(new Uri("https://msapi.itstep.org/api/v1/auth/login"), ref Token);
@@ -45,13 +47,54 @@ namespace WindowsFormsApp1
         private void loading(object obj)
         {
             GetJson<UserInfo>(Token, new Uri("https://msapi.itstep.org/api/v1/settings/user-info"), ref UserInfo);
-            using (WebClient web = new WebClient())
+            if (Properties.Settings.Default.phonto != UserInfo.photo)
             {
-                web.DownloadFileAsync(new Uri(UserInfo.photo), "User");
-                web.DownloadFileCompleted += Web_DownloadFileCompleted;
+                using (WebClient web = new WebClient())
+                {
+                    Properties.Settings.Default.phonto = UserInfo.photo;
+                    web.DownloadFileAsync(new Uri(UserInfo.photo), "User");
+                    web.DownloadFileCompleted += Web_DownloadFileCompleted;
+                }
+            }
+            else
+            {
+                pictureBox1.Image = Image.FromFile("User");
             }
             GetJson<Ranking>(Token, new Uri("https://msapi.itstep.org/api/v1/dashboard/progress/leader-group-points"), ref ranking);
             this.Invoke(new Action(() => InitializeLabel()));
+            GetJson<List<Schedule>>(Token,
+                new Uri("https://msapi.itstep.org/api/v1/schedule/operations/get-month?date_filter=2019-01-23"),
+                ref schedules);
+            this.Invoke(new Action(() => listView1.Items.Clear()));
+            foreach (var item in schedules)
+            {
+                if(item.date == "2019-01-24")
+                {
+                    this.Invoke(new Action(() =>
+                    {
+                        today1.Text = item.lesson.ToString();
+                        today2.Text = item.started_at;
+                        today3.Text = item.finished_at;
+                        today5.Text = item.teacher_name;
+                        today6.Text = item.subject_name;
+                        today7.Text = item.room_name;
+                    }));
+                }
+                this.Invoke(new Action(() => listView1.Items.Add(AddItem(item))));
+            }
+        }
+
+        private ListViewItem AddItem(Schedule schedule)
+        {
+            string[] vs = new string[listView1.Columns.Count];
+            vs[0] = schedule.date;
+            vs[1] = schedule.lesson.ToString();
+            vs[2] = schedule.started_at;
+            vs[3] = schedule.finished_at;
+            vs[4] = schedule.teacher_name;
+            vs[5] = schedule.subject_name;
+            vs[6] = schedule.room_name;
+            return new ListViewItem(vs);
         }
 
         private void InitializeLabel()
@@ -149,10 +192,12 @@ namespace WindowsFormsApp1
 
         private void Form1_FormClosing(object sender, FormClosingEventArgs e)
         {
+            File.WriteAllText("../../Token.json", Newtonsoft.Json.JsonConvert.SerializeObject(Token));
             if (Application.OpenForms[settingForm.Name] != null)
             {
                 settingForm.Dispose();
             }
+            Properties.Settings.Default.Save();
         }
     }
 }
