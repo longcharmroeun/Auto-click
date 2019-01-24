@@ -21,6 +21,7 @@ namespace WindowsFormsApp1
         private Ranking ranking;
         private SettingForm settingForm;
         private List<Schedule> schedules;
+        private List<Schedule> Lession;
         public Form1()
         {
             InitializeComponent();
@@ -33,6 +34,7 @@ namespace WindowsFormsApp1
             UserInfo = new UserInfo();
             ranking = new Ranking();
             schedules = new List<Schedule>();
+            Lession = new List<Schedule>();
             try
             {
                 Authorization(new Uri("https://msapi.itstep.org/api/v1/auth/login"), ref Token);
@@ -68,8 +70,9 @@ namespace WindowsFormsApp1
             this.Invoke(new Action(() => listView1.Items.Clear()));
             foreach (var item in schedules)
             {
-                if(item.date == "2019-01-24")
+                if (item.date == $"{DateTime.Now.Year}-{DateTime.Now.Month.ToString("00")}-{DateTime.Now.Day}") 
                 {
+                    Lession.Add(item);
                     this.Invoke(new Action(() =>
                     {
                         today1.Text = item.lesson.ToString();
@@ -126,6 +129,11 @@ namespace WindowsFormsApp1
             pictureBox1.Image = Image.FromFile("User");
         }
 
+        /// <summary>
+        /// Get token from url
+        /// </summary>
+        /// <param name="uri">URL</param>
+        /// <param name="token">token</param>
         private void Authorization(Uri uri,ref Token token)
         {
             HttpWebRequest webRequest = WebRequest.CreateHttp(uri);
@@ -146,6 +154,13 @@ namespace WindowsFormsApp1
             }
         }
 
+        /// <summary>
+        /// Load Json to object
+        /// </summary>
+        /// <typeparam name="T">type of object</typeparam>
+        /// <param name="token">Token for url</param>
+        /// <param name="uri">url</param>
+        /// <param name="obj">object name</param>
         private void GetJson <T>(Token token, Uri uri, ref T obj)
         {
             HttpWebRequest webRequest = WebRequest.CreateHttp(uri);
@@ -198,6 +213,30 @@ namespace WindowsFormsApp1
                 settingForm.Dispose();
             }
             Properties.Settings.Default.Save();
+        }
+
+        private void button2_Click(object sender, EventArgs e)
+        {
+            if (button2.Text == "Lession 0")
+            {
+                today1.Text = Lession[0].lesson.ToString();
+                today2.Text = Lession[0].started_at;
+                today3.Text = Lession[0].finished_at;
+                today5.Text = Lession[0].teacher_name;
+                today6.Text = Lession[0].subject_name;
+                today7.Text = Lession[0].room_name;
+                button2.Text = "Lession 1";
+            }
+            else
+            {
+                today1.Text = Lession[1].lesson.ToString();
+                today2.Text = Lession[1].started_at;
+                today3.Text = Lession[1].finished_at;
+                today5.Text = Lession[1].teacher_name;
+                today6.Text = Lession[1].subject_name;
+                today7.Text = Lession[1].room_name;
+                button2.Text = "Lession 0";
+            }
         }
     }
 }
